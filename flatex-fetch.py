@@ -1,6 +1,7 @@
 import re
 import os
 import json
+import click
 import requests
 import posixpath
 from urllib.parse import urljoin, urlparse
@@ -170,8 +171,29 @@ class Fetcher(object):
             print(f"{status} {filename}")
 
 
+@click.command()
+@click.option("--session-id", help="the optional session id from flatex (JSESSIONID)")
+@click.option("-u", "--userid", help="the session ID to use for sign-in")
+@click.option("-p", "--password", help="the password to use for sign-in")
+@click.option(
+    "-o",
+    "--output",
+    help="The output folder where PDFs go",
+    default="pdfs",
+    show_default=True,
+)
+@click.option(
+    "--days", help="How many days of PDFs to download", default=90, show_default=True
+)
+def cli(session_id, userid, password, output, days):
+    """A utility to download PDFs from flatex.at"""
+    fetcher = Fetcher(session_id)
+    if userid:
+        if not password:
+            password = click.prompt("password", hide_input=True)
+        fetcher.login(userid, password)
+    fetcher.download_all(output, days=days)
+
+
 if __name__ == "__main__":
-    fetcher = Fetcher(os.environ.get("FLATEX_SESSION") or None)
-    if os.environ.get("FLATEX_USERID"):
-        fetcher.login(os.environ["FLATEX_USERID"], os.environ["FLATEX_PASSWORD"])
-    fetcher.download_all("pdfs", days=90)
+    cli()
