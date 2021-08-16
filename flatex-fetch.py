@@ -171,6 +171,7 @@ class Fetcher(object):
 
 
 if __name__ == "__main__":
-    fetcher = Fetcher()
-    fetcher.login(os.environ["FLATEX_USERID"], os.environ["FLATEX_PASSWORD"])
+    fetcher = Fetcher(os.environ.get("FLATEX_SESSION") or None)
+    if os.environ.get("FLATEX_USERID"):
+        fetcher.login(os.environ["FLATEX_USERID"], os.environ["FLATEX_PASSWORD"])
     fetcher.download_all("pdfs", days=90)
