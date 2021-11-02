@@ -173,7 +173,7 @@ class Fetcher(object):
 
 @click.command()
 @click.option("--session-id", help="the optional session id from flatex (JSESSIONID)")
-@click.option("-u", "--userid", help="the session ID to use for sign-in")
+@click.option("-u", "--userid", help="the user ID to use for sign-in")
 @click.option("-p", "--password", help="the password to use for sign-in")
 @click.option(
     "-o",
