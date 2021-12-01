@@ -12,8 +12,11 @@ URL_BASE = "https://konto.flatex.at/banking-flatex.at/"
 SSO_URL = "https://www.flatex.at/sso"
 
 _token_re = re.compile(r'\bwebcore\.setTokenId\s*\(\s*"(.*?)"')
-_download_re = re.compile(
+_pdf_download_re = re.compile(
     r'\bDownloadDocumentBrowserBehaviorsClick\.finished\((".*?\.pdf")'
+)
+_csv_download_re = re.compile(
+    r'\bDownloadDocumentBrowserBehaviorsClick\.finished\((".*?\.csv")'
 )
 
 
@@ -80,7 +83,7 @@ class Fetcher(object):
             if "windowId" in command:
                 self.window_id = command["windowId"]
 
-        return resp.json()
+        return json
 
     def _archive_list_request(self, data):
         return self._request(
@@ -117,7 +120,7 @@ class Fetcher(object):
 
             for command in rv["commands"]:
                 if command["command"] == "execute":
-                    download = _download_re.search(command["script"])
+                    download = _pdf_download_re.search(command["script"])
                     if download is not None:
                         yield urljoin(URL_BASE, json.loads(download.group(1)))
                         found = True
@@ -170,11 +173,63 @@ class Fetcher(object):
                             df.write(resp.content)
             print(f"{status} {filename}")
 
+    def download_csv(self, csv, start_date=None, end_date=None, days=None):
+        if csv == "transactions":
+            endpoint = "depositTransactionsFormAction.do"
+            form = "depositTransactionsForm"
+        elif csv == "account":
+            endpoint = "accountPostingsFormAction.do"
+            form = "accountPostingsForm"
+        else:
+            raise TypeError("unknown csv")
+
+        if end_date is None:
+            end_date = date.today()
+        if days is not None:
+            start_date = end_date - timedelta(days=days)
+        if start_date is None:
+            raise TypeError("no start date")
+
+        self._request(
+            endpoint,
+            {
+                "dateRangeComponent.startDate.text": _format_date(start_date),
+                "dateRangeComponent.endDate.text": _format_date(end_date),
+                "depositSelection.deposit.selecteditemindex": "0",
+                "searchType.selecteditemindex": "0",
+                "dateRangeComponent.retrievalPeriodSelection.selecteditemindex": "5",
+            }
+        )
+
+        rv = self._request(
+            "ajaxCommandServlet",
+            {
+                "command": "triggerAction",
+                "delay": "0",
+                "eventData": json.dumps({
+                    "button": 0,
+                    "value": ""
+                }),
+                "eventType": "click",
+                "formName": form,
+                "widgetId": form + "_tableActionCombobox_entriesI1I",
+                "widgetName": "tableActionCombobox.entries[1]"
+            }
+        )
+        for command in rv["commands"]:
+            if command["command"] == "execute":
+                match = _csv_download_re.search(command["script"])
+                if match is not None:
+                    url = urljoin(URL_BASE, json.loads(match.group(1)))
+                    with self.download_file(url) as resp:
+                        return resp.content
+
 
 @click.command()
 @click.option("--session-id", help="the optional session id from flatex (JSESSIONID)")
 @click.option("-u", "--userid", help="the user ID to use for sign-in")
 @click.option("-p", "--password", help="the password to use for sign-in")
+@click.option("--csv", help="Download a CSV and print to stdout instead", type=click.Choice(["transactions", "account"]))
 @click.option(
     "-o",
     "--output",
@@ -185,14 +240,26 @@ class Fetcher(object):
 @click.option(
     "--days", help="How many days of PDFs to download", default=90, show_default=True
 )
-def cli(session_id, userid, password, output, days):
-    """A utility to download PDFs from flatex.at"""
+def cli(session_id, userid, password, output, days, csv):
+    """A utility to download PDFs from flatex.at.
+    
+    The default behavior is to download PDFs but optionally with --csv
+    one can get one of the two CSV types ("transactions" for a list of
+    tranasctions or "account" for the account overview) instead.
+    """
     fetcher = Fetcher(session_id)
     if userid:
         if not password:
             password = click.prompt("password", hide_input=True)
         fetcher.login(userid, password)
-    fetcher.download_all(output, days=days)
+    if csv:
+        downloaded = fetcher.download_csv(csv, days=days)
+        if downloaded is not None:
+            click.echo(downloaded)
+        else:
+            click.abort("")
+    else:
+        fetcher.download_all(output, days=days)
 
 
 if __name__ == "__main__":
