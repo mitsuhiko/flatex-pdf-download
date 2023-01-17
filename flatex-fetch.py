@@ -10,15 +10,15 @@ from datetime import date, timedelta
 
 URL_BASE = "https://konto.flatex.at/banking-flatex.at/"
 SSO_URL = "https://www.flatex.at/sso"
+USER_AGENT = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/109.0.0.0 Safari/537.36"
 
 _token_re = re.compile(r'\bwebcore\.setTokenId\s*\(\s*"(.*?)"')
 _pdf_download_re = re.compile(
-    r'\bDownloadDocumentBrowserBehaviorsClick\.finished\((".*?\.pdf")'
+    r'DocumentViewer\.display\((".*?\.pdf")'
 )
 _csv_download_re = re.compile(
-    r'\bDownloadDocumentBrowserBehaviorsClick\.finished\((".*?\.csv")'
+    r'DocumentViewer\.display\((".*?\.csv")'
 )
-
 
 def _format_date(d):
     return d.strftime("%d.%m.%Y")
@@ -42,6 +42,9 @@ class Fetcher(object):
     def login(self, user_id, password):
         self.session.post(
             SSO_URL,
+            headers={
+            'User-Agent': USER_AGENT
+            },
             data={
                 "tx_flatexaccounts_singlesignonbanking[uname_app]": str(user_id),
                 "tx_flatexaccounts_singlesignonbanking[password_app]": password,
@@ -57,6 +60,8 @@ class Fetcher(object):
             "X-tokenId": self.token_id or "x",
             "Accept": "*/*",
             "X-AJAX": "true",
+            'User-Agent': USER_AGENT,
+            
         }
 
         if self.session_id is not None:
@@ -89,8 +94,6 @@ class Fetcher(object):
         return self._request(
             "documentArchiveListFormAction.do",
             {
-                "dateRangeComponent.startDate.text": "26.06.2021",
-                "dateRangeComponent.endDate.text": "26.07.2021",
                 "accountSelection.account.selecteditemindex": "0",
                 "documentCategory.selecteditemindex": "0",
                 "readState.selecteditemindex": "0",
