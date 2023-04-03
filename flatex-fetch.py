@@ -135,12 +135,17 @@ class Fetcher(object):
             idx += 1
 
     def iter_all_download_urls(self, start_date=None, end_date=None, days=None):
-        if end_date is None:
+        if end_date is not None:
+            end_date = date.fromisoformat(end_date)
+        else:
             end_date = date.today()
-        if days is not None:
+
+        if start_date is not None:
+            start_date = date.fromisoformat(start_date)
+        elif days is not None:
             start_date = end_date - timedelta(days=days)
-        if start_date is None:
-            raise TypeError("no start date")
+        else:
+            raise RuntimeError("no start date")
 
         for start_date, end_date in _iter_dates(start_date, end_date):
             for url in self.iter_download_urls(start_date, end_date):
@@ -246,7 +251,9 @@ class Fetcher(object):
 @click.option(
     "--days", help="How many days of PDFs to download", default=90, show_default=True
 )
-def cli(session_id, userid, password, output, days, csv):
+@click.option("--start", help="Date when to start downloading PDFs (format: 2021-01-15)")
+@click.option("--end", help="Date when to stop downloading PDFs (format: 2021-06-24)")
+def cli(session_id, userid, password, output, days, csv, start, end):
     """A utility to download PDFs from flatex.at.
     
     The default behavior is to download PDFs but optionally with --csv
@@ -265,7 +272,7 @@ def cli(session_id, userid, password, output, days, csv):
         else:
             click.abort("")
     else:
-        fetcher.download_all(output, days=days)
+        fetcher.download_all(output, days=days, start_date=start, end_date=end)
 
 
 if __name__ == "__main__":
