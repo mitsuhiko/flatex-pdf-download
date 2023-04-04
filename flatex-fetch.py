@@ -8,8 +8,18 @@ from urllib.parse import urljoin, urlparse
 from datetime import date, timedelta
 
 
-URL_BASE = "https://konto.flatex.at/banking-flatex.at/"
-SSO_URL = "https://www.flatex.at/sso"
+PORTALS = {
+    "at": {
+        "url_base": "https://konto.flatex.at/banking-flatex.at/",
+        "sso_url": "https://www.flatex.at/sso",
+    },
+    "de": {
+        "url_base": "https://konto.flatex.de/banking-flatex/",
+        "sso_url": "https://www.flatex.de/sso",
+    },
+}
+DEFAULT_PORTAL = "at"
+
 USER_AGENT = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/109.0.0.0 Safari/537.36"
 
 _token_re = re.compile(r'\bwebcore\.setTokenId\s*\(\s*"(.*?)"')
@@ -30,15 +40,25 @@ def _iter_dates(start, end):
 
 
 class Fetcher(object):
-    def __init__(self, session_id=None):
+    def __init__(self, session_id=None, portal=None):
+        if portal is None:
+            portal = DEFAULT_PORTAL
         self.session_id = session_id
         self.window_id = None
         self.token_id = None
         self.session = requests.Session()
 
+    @property
+    def url_base(self):
+        return PORTALS[self.portal]["url_base"]
+
+    @property
+    def sso_url(self):
+        return PORTALS[self.portal]["sso_url"]
+
     def login(self, user_id, password):
         self.session.post(
-            SSO_URL,
+            self.sso_url,
             headers={"User-Agent": USER_AGENT},
             data={
                 "tx_flatexaccounts_singlesignonbanking[uname_app]": str(user_id),
@@ -48,7 +68,7 @@ class Fetcher(object):
         )
 
     def _request(self, url, data):
-        url = urljoin(URL_BASE, url)
+        url = urljoin(self.url_base, url)
         headers = {
             "X-Requested-With": "XMLHttpRequest",
             "X-windowId": self.window_id or "x",
@@ -119,7 +139,7 @@ class Fetcher(object):
                 if command["command"] == "execute":
                     download = _pdf_download_re.search(command["script"])
                     if download is not None:
-                        yield urljoin(URL_BASE, json.loads(download.group(1)))
+                        yield urljoin(self.url_base, json.loads(download.group(1)))
                         found = True
                         break
 
@@ -145,7 +165,7 @@ class Fetcher(object):
         self.session.headers = {"User-Agent": USER_AGENT}
         if self.session_id is not None:
             cookies = {"JSESSIONID": self.session_id}
-        return self.session.get(urljoin(URL_BASE, url), cookies=cookies)
+        return self.session.get(urljoin(self.url_base, url), cookies=cookies)
 
     def download_all(self, target_folder, **kwargs):
         try:
@@ -215,7 +235,7 @@ class Fetcher(object):
             if command["command"] == "execute":
                 match = _csv_download_re.search(command["script"])
                 if match is not None:
-                    url = urljoin(URL_BASE, json.loads(match.group(1)))
+                    url = urljoin(self.url_base, json.loads(match.group(1)))
                     with self.download_file(url) as resp:
                         return resp.content
 
@@ -235,6 +255,13 @@ class Fetcher(object):
     help="The output folder where PDFs go",
     default="pdfs",
     show_default=True,
+)
+@click.option(
+    "--portal",
+    help="Which Flatex portal to use",
+    default=DEFAULT_PORTAL,
+    show_default=True,
+    type=click.Choice(sorted(PORTALS.keys())),
 )
 @click.option(
     "--days", help="How many days of PDFs to download", default=90, show_default=True
