@@ -13,12 +13,9 @@ SSO_URL = "https://www.flatex.at/sso"
 USER_AGENT = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/109.0.0.0 Safari/537.36"
 
 _token_re = re.compile(r'\bwebcore\.setTokenId\s*\(\s*"(.*?)"')
-_pdf_download_re = re.compile(
-    r'DocumentViewer\.display\((".*?\.pdf")'
-)
-_csv_download_re = re.compile(
-    r'DocumentViewer\.display\((".*?\.csv")'
-)
+_pdf_download_re = re.compile(r'DocumentViewer\.display\((".*?\.pdf")')
+_csv_download_re = re.compile(r'DocumentViewer\.display\((".*?\.csv")')
+
 
 def _format_date(d):
     return d.strftime("%d.%m.%Y")
@@ -42,9 +39,7 @@ class Fetcher(object):
     def login(self, user_id, password):
         self.session.post(
             SSO_URL,
-            headers={
-            'User-Agent': USER_AGENT
-            },
+            headers={"User-Agent": USER_AGENT},
             data={
                 "tx_flatexaccounts_singlesignonbanking[uname_app]": str(user_id),
                 "tx_flatexaccounts_singlesignonbanking[password_app]": password,
@@ -60,8 +55,7 @@ class Fetcher(object):
             "X-tokenId": self.token_id or "x",
             "Accept": "*/*",
             "X-AJAX": "true",
-            'User-Agent': USER_AGENT,
-            
+            "User-Agent": USER_AGENT,
         }
 
         if self.session_id is not None:
@@ -148,9 +142,7 @@ class Fetcher(object):
 
     def download_file(self, url):
         cookies = None
-        self.session.headers = {
-            'User-Agent': USER_AGENT
-        }
+        self.session.headers = {"User-Agent": USER_AGENT}
         if self.session_id is not None:
             cookies = {"JSESSIONID": self.session_id}
         return self.session.get(urljoin(URL_BASE, url), cookies=cookies)
@@ -204,7 +196,7 @@ class Fetcher(object):
                 "depositSelection.deposit.selecteditemindex": "0",
                 "searchType.selecteditemindex": "0",
                 "dateRangeComponent.retrievalPeriodSelection.selecteditemindex": "5",
-            }
+            },
         )
 
         rv = self._request(
@@ -212,15 +204,12 @@ class Fetcher(object):
             {
                 "command": "triggerAction",
                 "delay": "0",
-                "eventData": json.dumps({
-                    "button": 0,
-                    "value": ""
-                }),
+                "eventData": json.dumps({"button": 0, "value": ""}),
                 "eventType": "click",
                 "formName": form,
                 "widgetId": form + "_tableActionCombobox_entriesI1I",
-                "widgetName": "tableActionCombobox.entries[1]"
-            }
+                "widgetName": "tableActionCombobox.entries[1]",
+            },
         )
         for command in rv["commands"]:
             if command["command"] == "execute":
@@ -235,7 +224,11 @@ class Fetcher(object):
 @click.option("--session-id", help="the optional session id from flatex (JSESSIONID)")
 @click.option("-u", "--userid", help="the user ID to use for sign-in")
 @click.option("-p", "--password", help="the password to use for sign-in")
-@click.option("--csv", help="Download a CSV and print to stdout instead", type=click.Choice(["transactions", "account"]))
+@click.option(
+    "--csv",
+    help="Download a CSV and print to stdout instead",
+    type=click.Choice(["transactions", "account"]),
+)
 @click.option(
     "-o",
     "--output",
@@ -248,7 +241,7 @@ class Fetcher(object):
 )
 def cli(session_id, userid, password, output, days, csv):
     """A utility to download PDFs from flatex.at.
-    
+
     The default behavior is to download PDFs but optionally with --csv
     one can get one of the two CSV types ("transactions" for a list of
     tranasctions or "account" for the account overview) instead.
