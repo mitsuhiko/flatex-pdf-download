@@ -148,6 +148,9 @@ class Fetcher(object):
 
     def download_file(self, url):
         cookies = None
+        self.session.headers = {
+            'User-Agent': USER_AGENT
+        }
         if self.session_id is not None:
             cookies = {"JSESSIONID": self.session_id}
         return self.session.get(urljoin(URL_BASE, url), cookies=cookies)
