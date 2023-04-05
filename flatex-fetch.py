@@ -266,14 +266,14 @@ class Fetcher(object):
 @click.option(
     "--days", help="How many days of PDFs to download", default=90, show_default=True
 )
-def cli(session_id, userid, password, output, days, csv):
+def cli(session_id, userid, password, output, portal, days, csv):
     """A utility to download PDFs from flatex.at.
 
     The default behavior is to download PDFs but optionally with --csv
     one can get one of the two CSV types ("transactions" for a list of
     tranasctions or "account" for the account overview) instead.
     """
-    fetcher = Fetcher(session_id)
+    fetcher = Fetcher(session_id, portal=portal)
     if userid:
         if not password:
             password = click.prompt("password", hide_input=True)
