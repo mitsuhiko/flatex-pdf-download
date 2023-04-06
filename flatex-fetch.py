@@ -46,6 +46,7 @@ class Fetcher(object):
         self.session_id = session_id
         self.window_id = None
         self.token_id = None
+        self.portal = portal
         self.session = requests.Session()
 
     @property
