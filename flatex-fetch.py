@@ -11,11 +11,11 @@ from datetime import date, timedelta
 PORTALS = {
     "at": {
         "url_base": "https://konto.flatex.at/banking-flatex.at/",
-        "sso_url": "https://www.flatex.at/login.at/sso",
+        "sso_url": "https://www.flatex.at/sso",
     },
     "de": {
         "url_base": "https://konto.flatex.de/banking-flatex/",
-        "sso_url": "https://www.flatex.de/login.de/sso",
+        "sso_url": "https://www.flatex.de/sso",
     },
 }
 DEFAULT_PORTAL = "at"
