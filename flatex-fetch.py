@@ -1,8 +1,10 @@
 import re
 import os
 import json
+import time
 import click
 import requests
+import random
 import posixpath
 from urllib.parse import urljoin, urlparse
 from datetime import date, timedelta
@@ -40,7 +42,7 @@ def _iter_dates(start, end):
 
 
 class Fetcher(object):
-    def __init__(self, session_id=None, portal=None):
+    def __init__(self, session_id=None, portal=None, wait=False):
         if portal is None:
             portal = DEFAULT_PORTAL
         self.session_id = session_id
@@ -48,6 +50,7 @@ class Fetcher(object):
         self.token_id = None
         self.portal = portal
         self.session = requests.Session()
+        self.wait = wait
 
     @property
     def url_base(self):
@@ -191,6 +194,8 @@ class Fetcher(object):
                         with open(target_file, "wb") as df:
                             df.write(resp.content)
             print(f"{status} {filename}")
+            if self.wait:
+                time.sleep(random.randint(2, 6))
 
     def download_csv(self, csv, start_date=None, end_date=None, days=None):
         if csv == "transactions":
@@ -267,14 +272,17 @@ class Fetcher(object):
 @click.option(
     "--days", help="How many days of PDFs to download", default=90, show_default=True
 )
-def cli(session_id, userid, password, output, portal, days, csv):
+@click.option(
+    "--wait", help="Wait for a random number of seconds between fetches", show_default=True,
+    default=False, type=bool)
+def cli(session_id, userid, password, output, portal, days, csv, wait):
     """A utility to download PDFs from flatex.at.
 
     The default behavior is to download PDFs but optionally with --csv
     one can get one of the two CSV types ("transactions" for a list of
     tranasctions or "account" for the account overview) instead.
     """
-    fetcher = Fetcher(session_id, portal=portal)
+    fetcher = Fetcher(session_id, portal=portal, wait=wait)
     if userid:
         if not password:
             password = click.prompt("password", hide_input=True)
