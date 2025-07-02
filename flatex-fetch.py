@@ -4,7 +4,7 @@ import json
 import click
 import requests
 import posixpath
-from urllib.parse import urljoin, urlparse
+from urllib.parse import urljoin, urlparse, parse_qs
 from datetime import date, timedelta
 
 
@@ -97,7 +97,25 @@ class Fetcher(object):
         json = resp.json()
         for command in json["commands"]:
             if command["command"] == "fullPageReplace":
-                token = _token_re.search(command["content"])
+                to_search = ""
+
+                if command["fetchLocation"] is not None:
+                    query = urlparse(command["fetchLocation"]).query
+                    window_id = parse_qs(query)["windowId"][0]
+                    self.window_id = window_id
+
+                    assert window_id is not None, "Error: Flatex redirection scheme changed, please review"
+
+                    resp = self.session.get(urljoin(self.url_base, "/banking-flatex.at/fetchCachedPage?windowId=" + window_id),
+                                            headers={"User-Agent": USER_AGENT},
+                                            cookies=cookies)
+                    to_search = resp.text
+                elif command["content"] is not None:
+                    to_search = command["content"]
+                else:
+                    assert "error: could not get token from page"
+
+                token = _token_re.search(to_search)
                 if token is not None:
                     self.token_id = token.group(1)
             if "windowId" in command:
@@ -291,3 +309,4 @@ def cli(session_id, userid, password, output, portal, days, csv):
 
 if __name__ == "__main__":
     cli()
+
